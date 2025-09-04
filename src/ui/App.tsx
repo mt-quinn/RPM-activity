@@ -7,6 +7,8 @@ import { Phase } from '../controller/types';
 import Lobby from './Lobby';
 import LegView from './LegView';
 import Checkpoint from './Checkpoint';
+import { createDiscordInstanceTransport } from '../sync/transport';
+import type { Intent, SnapshotMsg } from '../sync/protocol';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -16,6 +18,7 @@ export default function App() {
   const [ctrl, setCtrl] = useState<RaceController | null>(null);
   const [snap, setSnap] = useState(() => null as ReturnType<RaceController['getSnapshot']> | null);
   const [seed, setSeed] = useState<number>(() => Math.floor(Math.random() * 1e9));
+  const [isHost, setIsHost] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -34,11 +37,72 @@ export default function App() {
       c.addParticipant(myId, myName);
       setCtrl(c);
       setSnap(c.getSnapshot());
-      const t = window.setInterval(() => {
-        c.tickOneSecond();
+      // Host election: lowest user ID among instance users (fallback me)
+      const users = (await (sdk as any).commands.getInstanceConnectedUsers?.())?.users ?? [];
+      const ids: string[] = [...users.map((u: any) => u.id), myId].filter(Boolean).sort();
+      const hostId = ids[0] ?? myId;
+      const amHost = hostId === myId;
+      setIsHost(amHost);
+
+      const transport = await createDiscordInstanceTransport(sdk);
+      let seq = 0;
+      const broadcast = () => {
+        if (!amHost) return;
+        const state = c.getSnapshot();
+        seq += 1;
+        const msg: SnapshotMsg = { t: 'snapshot', v: seq, state };
+        transport.send(msg);
+      };
+
+      // Listen for intents and snapshots
+      transport.onMessage((m: any) => {
+        if (!m || typeof m !== 'object') return;
+        if ((m as SnapshotMsg).t === 'snapshot') {
+          setSnap((m as SnapshotMsg).state);
+          return;
+        }
+        if (!amHost) return;
+        const intent = m as Intent;
+        switch (intent.t) {
+          case 'join':
+            c.addParticipant(intent.id, intent.name);
+            break;
+          case 'ready':
+            c.setReady(intent.id, intent.ready);
+            break;
+          case 'host-start':
+            c.startIfAllReady();
+            break;
+          case 'roll':
+            c.roll(intent.id);
+            break;
+          case 'hold':
+            c.hold(intent.id);
+            break;
+          case 'shift':
+            c.shift(intent.id, intent.d);
+            break;
+          case 'repair':
+            c.repair(intent.id);
+            break;
+        }
         setSnap(c.getSnapshot());
+        broadcast();
+      });
+
+      // Host tick loop
+      const t = window.setInterval(() => {
+        if (amHost) {
+          c.tickOneSecond();
+          setSnap(c.getSnapshot());
+          broadcast();
+        }
       }, 1000);
-      return () => { window.clearInterval(t); };
+
+      // Announce join
+      transport.send({ t: 'join', id: myId, name: myName } as Intent);
+
+      return () => { window.clearInterval(t); transport.close(); };
     })();
     return () => { disposed = true; };
   }, []);
@@ -68,23 +132,30 @@ export default function App() {
           <Lobby
             participants={snapshot.participants}
             ready={snapshot.participants.find(p => p.id === meId)?.ready ?? false}
-            onToggleReady={() => { if (!ctrl) return; ctrl.setReady(meId, !(snapshot.participants.find(p => p.id === meId)?.ready)); setSnap(ctrl.getSnapshot()); ctrl.startIfAllReady(); }}
-            onStart={() => { if (!ctrl) return; ctrl.startIfAllReady(); setSnap(ctrl.getSnapshot()); }}
+            onToggleReady={() => {
+              const next = !(snapshot.participants.find(p => p.id === meId)?.ready);
+              if (isHost && ctrl) { ctrl.setReady(meId, next); setSnap(ctrl.getSnapshot()); }
+              else (window as any).rpmTransport?.send?.({ t: 'ready', id: meId, ready: next } as Intent);
+            }}
+            onStart={() => {
+              if (isHost && ctrl) { ctrl.startIfAllReady(); setSnap(ctrl.getSnapshot()); }
+              else (window as any).rpmTransport?.send?.({ t: 'host-start' } as Intent);
+            }}
           />
         ) : snapshot.phase === Phase.Leg ? (
           <LegView
             snap={snapshot}
             meId={meId}
-            onRoll={() => { if (!ctrl) return; ctrl.roll(meId); setSnap(ctrl.getSnapshot()); }}
-            onHold={() => { if (!ctrl) return; ctrl.hold(meId); setSnap(ctrl.getSnapshot()); }}
-            onShift={(d) => { if (!ctrl) return; ctrl.shift(meId, d); setSnap(ctrl.getSnapshot()); }}
+            onRoll={() => { if (isHost && ctrl) { ctrl.roll(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'roll', id: meId } as Intent); }}
+            onHold={() => { if (isHost && ctrl) { ctrl.hold(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'hold', id: meId } as Intent); }}
+            onShift={(d) => { if (isHost && ctrl) { ctrl.shift(meId, d); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'shift', id: meId, d } as Intent); }}
           />
         ) : snapshot.phase === Phase.Checkpoint ? (
           <Checkpoint
             snap={snapshot}
             meId={meId}
-            onRepair={() => { if (!ctrl) return; ctrl.repair(meId); setSnap(ctrl.getSnapshot()); }}
-            onNext={() => { if (!ctrl) return; ctrl.tickOneSecond(); setSnap(ctrl.getSnapshot()); }}
+            onRepair={() => { if (isHost && ctrl) { ctrl.repair(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'repair', id: meId } as Intent); }}
+            onNext={() => { if (isHost && ctrl) { ctrl.tickOneSecond(); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'host-start' } as Intent); }}
           />
         ) : (
           <div>Game Over. Thanks for playing!</div>
