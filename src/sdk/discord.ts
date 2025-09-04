@@ -7,6 +7,7 @@ export interface DiscordUser {
   id: string;
   username: string;
   discriminator?: string;
+  global_name?: string;
 }
 
 export async function initDiscordSdk(appId: string): Promise<DiscordSDK> {
@@ -20,11 +21,22 @@ export async function authenticate(sdk: DiscordSDK): Promise<DiscordUser | null>
     const { user } = await (sdk as any).commands.authenticate({ access_token: null });
     return {
       id: user.id,
-      username: user.username || user.global_name || 'Player',
+      username: user.global_name || user.username || 'Player',
       discriminator: user.discriminator,
+      global_name: user.global_name,
     } as DiscordUser;
   } catch {
     return null;
+  }
+}
+
+export async function getConnectedUsers(sdk: DiscordSDK): Promise<DiscordUser[]> {
+  try {
+    const res = await (sdk as any).commands.getInstanceConnectedUsers?.();
+    const users = (res?.users ?? []) as any[];
+    return users.map(u => ({ id: u.id, username: u.global_name || u.username, discriminator: u.discriminator, global_name: u.global_name }));
+  } catch {
+    return [];
   }
 }
 

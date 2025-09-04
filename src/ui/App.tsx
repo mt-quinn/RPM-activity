@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { type DiscordUser } from '../sdk/discord';
-import { authenticate, initDiscordSdk } from '../sdk/discord';
+import { authenticate, getConnectedUsers, initDiscordSdk } from '../sdk/discord';
 import { RaceController } from '../controller/raceController';
 import { Phase } from '../controller/types';
 import Lobby from './Lobby';
@@ -38,8 +38,8 @@ export default function App() {
       setCtrl(c);
       setSnap(c.getSnapshot());
       // Host election: lowest user ID among instance users (fallback me)
-      const users = (await (sdk as any).commands.getInstanceConnectedUsers?.())?.users ?? [];
-      const ids: string[] = [...users.map((u: any) => u.id), myId].filter(Boolean).sort();
+      const connected = await getConnectedUsers(sdk);
+      const ids: string[] = [...connected.map((u: any) => u.id), myId].filter(Boolean).sort();
       const hostId = ids[0] ?? myId;
       const amHost = hostId === myId;
       setIsHost(amHost);
