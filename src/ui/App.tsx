@@ -120,47 +120,62 @@ export default function App() {
   const snapshot = snap;
 
   return (
-    <div style={{ padding: 16, fontFamily: 'system-ui, sans-serif' }}>
-      <h2>RPM: Rally Premiere Marathon (Embedded)</h2>
-      <div style={{ fontSize: 12, opacity: 0.8 }}>
-        {ready ? 'SDK ready' : 'Initializing...'} {instanceId && `| Instance ${instanceId}`}
-      </div>
+    <div className="min-h-screen px-4 py-3">
+      <header className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">RPM: Rally Premiere Marathon</h2>
+        <span className="stat">{ready ? 'Connected' : 'Initializing...'} {instanceId && `| ${instanceId}`}</span>
+      </header>
 
-      {/* Self user display can be added once we add identity fetch. */}
-      {snapshot && (
-        snapshot.phase === Phase.Lobby ? (
-          <Lobby
-            participants={snapshot.participants}
-            ready={snapshot.participants.find(p => p.id === meId)?.ready ?? false}
-            onToggleReady={() => {
-              const next = !(snapshot.participants.find(p => p.id === meId)?.ready);
-              if (isHost && ctrl) { ctrl.setReady(meId, next); setSnap(ctrl.getSnapshot()); }
-              else (window as any).rpmTransport?.send?.({ t: 'ready', id: meId, ready: next } as Intent);
-            }}
-            onStart={() => {
-              if (isHost && ctrl) { ctrl.startIfAllReady(); setSnap(ctrl.getSnapshot()); }
-              else (window as any).rpmTransport?.send?.({ t: 'host-start' } as Intent);
-            }}
-          />
-        ) : snapshot.phase === Phase.Leg ? (
-          <LegView
-            snap={snapshot}
-            meId={meId}
-            onRoll={() => { if (isHost && ctrl) { ctrl.roll(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'roll', id: meId } as Intent); }}
-            onHold={() => { if (isHost && ctrl) { ctrl.hold(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'hold', id: meId } as Intent); }}
-            onShift={(d) => { if (isHost && ctrl) { ctrl.shift(meId, d); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'shift', id: meId, d } as Intent); }}
-          />
-        ) : snapshot.phase === Phase.Checkpoint ? (
-          <Checkpoint
-            snap={snapshot}
-            meId={meId}
-            onRepair={() => { if (isHost && ctrl) { ctrl.repair(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'repair', id: meId } as Intent); }}
-            onNext={() => { if (isHost && ctrl) { ctrl.tickOneSecond(); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'host-start' } as Intent); }}
-          />
-        ) : (
-          <div>Game Over. Thanks for playing!</div>
-        )
-      )}
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-3">
+          <div className="card">
+            {snapshot && (
+              snapshot.phase === Phase.Lobby ? (
+                <Lobby
+                  participants={snapshot.participants}
+                  ready={snapshot.participants.find(p => p.id === meId)?.ready ?? false}
+                  onToggleReady={() => {
+                    const next = !(snapshot.participants.find(p => p.id === meId)?.ready);
+                    if (isHost && ctrl) { ctrl.setReady(meId, next); setSnap(ctrl.getSnapshot()); }
+                    else (window as any).rpmTransport?.send?.({ t: 'ready', id: meId, ready: next } as Intent);
+                  }}
+                  onStart={() => {
+                    if (isHost && ctrl) { ctrl.startIfAllReady(); setSnap(ctrl.getSnapshot()); }
+                    else (window as any).rpmTransport?.send?.({ t: 'host-start' } as Intent);
+                  }}
+                />
+              ) : snapshot.phase === Phase.Leg ? (
+                <LegView
+                  snap={snapshot}
+                  meId={meId}
+                  onRoll={() => { if (isHost && ctrl) { ctrl.roll(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'roll', id: meId } as Intent); }}
+                  onHold={() => { if (isHost && ctrl) { ctrl.hold(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'hold', id: meId } as Intent); }}
+                  onShift={(d) => { if (isHost && ctrl) { ctrl.shift(meId, d); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'shift', id: meId, d } as Intent); }}
+                />
+              ) : snapshot.phase === Phase.Checkpoint ? (
+                <Checkpoint
+                  snap={snapshot}
+                  meId={meId}
+                  onRepair={() => { if (isHost && ctrl) { ctrl.repair(meId); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'repair', id: meId } as Intent); }}
+                  onNext={() => { if (isHost && ctrl) { ctrl.tickOneSecond(); setSnap(ctrl.getSnapshot()); } else (window as any).rpmTransport?.send?.({ t: 'host-start' } as Intent); }}
+                />
+              ) : (
+                <div>Game Over. Thanks for playing!</div>
+              )
+            )}
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="card">
+            <div className="font-semibold mb-2">Participants</div>
+            <ul className="text-sm opacity-80 list-disc list-inside">
+              {snapshot?.participants.map(p => (
+                <li key={p.id}>{p.name} {p.ready ? '✅' : '⏳'}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
