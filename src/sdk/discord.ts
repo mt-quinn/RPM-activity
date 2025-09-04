@@ -40,6 +40,21 @@ export async function getConnectedUsers(sdk: DiscordSDK): Promise<DiscordUser[]>
   }
 }
 
+export async function deriveRoomName(sdk: DiscordSDK): Promise<{ room: string; debug: string }> {
+  try {
+    const gid = await (sdk as any).commands.getGuildId?.();
+    const cid = await (sdk as any).commands.getChannelId?.();
+    const iid = await (sdk as any).commands.getInstanceId?.();
+    if (gid?.guild_id && cid?.channel_id) {
+      return { room: `rpm:g${gid.guild_id}:c${cid.channel_id}`, debug: `${gid.guild_id}/${cid.channel_id}` };
+    }
+    if (iid?.instance_id) {
+      return { room: `rpm:i${iid.instance_id}`, debug: iid.instance_id };
+    }
+  } catch {}
+  return { room: 'rpm:global', debug: 'global' };
+}
+
 export async function getInstanceId(_sdk: DiscordSDK): Promise<string | null> {
   // Some SDK builds do not expose an instance id command yet; return null for now.
   return null;

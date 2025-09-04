@@ -1,13 +1,14 @@
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { type DiscordUser } from '../sdk/discord';
-import { authenticate, getConnectedUsers, initDiscordSdk } from '../sdk/discord';
+import { authenticate, getConnectedUsers, initDiscordSdk, deriveRoomName } from '../sdk/discord';
 import { RaceController } from '../controller/raceController';
 import { Phase } from '../controller/types';
 import Lobby from './Lobby';
 import LegView from './LegView';
 import Checkpoint from './Checkpoint';
 import { createDiscordInstanceTransport } from '../sync/transport';
+import { createAblyTransport } from '../sync/ably';
 import type { Intent, SnapshotMsg } from '../sync/protocol';
 
 export default function App() {
@@ -44,7 +45,10 @@ export default function App() {
       const amHost = hostId === myId;
       setIsHost(amHost);
 
-      const transport = await createDiscordInstanceTransport(sdk);
+      // Prefer Ably if key provided; fallback to instance transport
+      const ablyKey = (window as any).ENV?.ABLY_KEY || (import.meta as any).env?.VITE_ABLY_KEY;
+      const { room: channelName } = await deriveRoomName(sdk);
+      const transport = ablyKey ? createAblyTransport(ablyKey, channelName) : await createDiscordInstanceTransport(sdk);
       // expose for intents from non-host clients
       (window as any).rpmTransport = transport;
       let seq = 0;

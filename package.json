@@ -15,6 +15,7 @@
     "@discord/embedded-app-sdk": "^1.5.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
+    "ably": "^1.2.47",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
