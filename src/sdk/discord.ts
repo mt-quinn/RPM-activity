@@ -15,6 +15,19 @@ export async function initDiscordSdk(appId: string): Promise<DiscordSDK> {
   return sdk;
 }
 
+export async function authenticate(sdk: DiscordSDK): Promise<DiscordUser | null> {
+  try {
+    const { user } = await (sdk as any).commands.authenticate({ access_token: null });
+    return {
+      id: user.id,
+      username: user.username || user.global_name || 'Player',
+      discriminator: user.discriminator,
+    } as DiscordUser;
+  } catch {
+    return null;
+  }
+}
+
 export async function getInstanceId(_sdk: DiscordSDK): Promise<string | null> {
   // Some SDK builds do not expose an instance id command yet; return null for now.
   return null;

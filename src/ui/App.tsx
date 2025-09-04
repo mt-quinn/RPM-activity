@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { type DiscordUser } from '../sdk/discord';
-import { initDiscordSdk } from '../sdk/discord';
+import { authenticate, initDiscordSdk } from '../sdk/discord';
 import { RaceController } from '../controller/raceController';
 import { Phase } from '../controller/types';
 import Lobby from './Lobby';
@@ -23,9 +23,9 @@ export default function App() {
       const sdk = await initDiscordSdk('1413218482954440766');
       if (disposed) return;
       setReady(true);
-      // Stub identity/participants until we wire authenticate
-      const myId = 'me';
-      const myName = 'Player';
+      const me = await authenticate(sdk);
+      const myId = me?.id ?? 'me';
+      const myName = me?.username ?? 'Player';
       setMeId(myId);
       const c = new RaceController(myId, (() => {
         let s = 1234567;
