@@ -40,6 +40,28 @@ export async function getConnectedUsers(sdk: DiscordSDK): Promise<DiscordUser[]>
   }
 }
 
+export async function getCurrentUserFallback(sdk: DiscordSDK): Promise<DiscordUser | null> {
+  try {
+    const cur = await (sdk as any).commands.getCurrentUser?.();
+    if (cur?.user) {
+      const u = cur.user;
+      return { id: u.id, username: u.global_name || u.username || 'Player', discriminator: u.discriminator, global_name: u.global_name };
+    }
+  } catch {}
+  return null;
+}
+
+export async function fetchSelfUser(sdk: DiscordSDK): Promise<DiscordUser | null> {
+  const auth = await authenticate(sdk);
+  if (auth) return auth;
+  const cur = await getCurrentUserFallback(sdk);
+  if (cur) return cur;
+  // Fallback: try to infer from connected users if only one
+  const users = await getConnectedUsers(sdk);
+  if (users.length === 1) return users[0];
+  return null;
+}
+
 export async function deriveRoomName(sdk: DiscordSDK): Promise<{ room: string; debug: string }> {
   try {
     const gid = await (sdk as any).commands.getGuildId?.();

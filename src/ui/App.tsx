@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { type DiscordUser } from '../sdk/discord';
-import { authenticate, getConnectedUsers, initDiscordSdk, deriveRoomName } from '../sdk/discord';
+import { fetchSelfUser, getConnectedUsers, initDiscordSdk, deriveRoomName } from '../sdk/discord';
 import { RaceController } from '../controller/raceController';
 import { Phase } from '../controller/types';
 import Lobby from './Lobby';
@@ -28,7 +28,7 @@ export default function App() {
       if (disposed) return;
       setReady(true);
       // Identity and connected users
-      const me = await authenticate(sdk);
+      const me = await fetchSelfUser(sdk);
       const myId = me?.id ?? 'me';
       const connected = await getConnectedUsers(sdk);
       setParticipants(connected);
