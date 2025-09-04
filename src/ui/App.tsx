@@ -1,7 +1,6 @@
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { type DiscordUser } from '../sdk/discord';
-import { fetchSelfUser, getConnectedUsers, initDiscordSdk, deriveRoomName } from '../sdk/discord';
+import { type DiscordUser, fetchSelfUser, getConnectedUsers, initDiscordSdk, deriveRoomName } from '../sdk/discord';
 import { RaceController } from '../controller/raceController';
 import { Phase } from '../controller/types';
 import Lobby from './Lobby';
@@ -16,6 +15,7 @@ export default function App() {
   const [participants, setParticipants] = useState<DiscordUser[]>([]);
   const [instanceId, setInstanceId] = useState<string>('');
   const [meId, setMeId] = useState<string>('me');
+  const [selfUser, setSelfUser] = useState<DiscordUser | null>(null);
   const [ctrl, setCtrl] = useState<RaceController | null>(null);
   const [snap, setSnap] = useState(() => null as ReturnType<RaceController['getSnapshot']> | null);
   const [seed, setSeed] = useState<number>(() => Math.floor(Math.random() * 1e9));
@@ -30,6 +30,7 @@ export default function App() {
       // Identity and connected users
       const me = await fetchSelfUser(sdk);
       const myId = me?.id ?? 'me';
+      setSelfUser(me ?? null);
       const connected = await getConnectedUsers(sdk);
       setParticipants(connected);
       const myName = connected.find(u => u.id === myId)?.username || me?.username || 'Player';
@@ -135,7 +136,7 @@ export default function App() {
     <div className="min-h-screen px-4 py-3">
       <header className="flex items-center justify-between">
         <h2 className="text-xl font-bold">RPM: Rally Premiere Marathon</h2>
-        <span className="stat">{ready ? `You: ${me?.username ?? 'Player'}` : 'Initializing...'}</span>
+        <span className="stat">{ready ? `You: ${selfUser?.username ?? 'Player'}` : 'Initializing...'}</span>
       </header>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
