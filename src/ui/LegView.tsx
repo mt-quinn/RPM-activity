@@ -7,14 +7,14 @@ export default function LegView({ snap, meId, onRoll, onHold, onShift }:
   const leg = snap.leg!;
   const me = snap.players[meId];
   const canShift = me && me.rollHistory.length > 0 && !me.isHeld && !me.hasOvershot;
-  const canRoll = me && !me.isHeld && !me.hasOvershot && me.rollsRemaining > 0;
+  const canRoll = me && !me.isHeld && !me.hasOvershot && me.rollsRemaining > 0 && !me.mustShift;
   return (
     <div>
-      <h3>Leg {snap.legIndex + 1}/{snap.maxLegs} — {leg.name}</h3>
+      <h3>Leg {snap.legIndex + 1}/{snap.maxLegs} — {leg.name} {leg.isPoliceRaid ? '🚨 Raid' : ''}</h3>
       <div>Target {leg.targetDistance} — Weather {leg.weather} — Time {snap.timeRemainingSec}s</div>
       <div style={{ marginTop: 8 }}>
         <button onClick={() => onShift(-1)} disabled={!canShift || me.currentGear === Gear.FIRST}>Shift Down</button>
-        <button onClick={onRoll} disabled={!canRoll} style={{ margin: '0 8px' }}>Roll</button>
+        <button onClick={onRoll} disabled={!canRoll} style={{ margin: '0 8px' }}>Roll{me?.mustShift ? ' (Shift required)' : ''}</button>
         <button onClick={() => onShift(1)} disabled={!canShift || me.currentGear === Gear.FIFTH}>Shift Up</button>
         <button onClick={onHold} disabled={!me || me.isHeld || me.hasOvershot} style={{ marginLeft: 8 }}>Hold</button>
       </div>

@@ -56,6 +56,7 @@ export interface PlayerState {
   maxRollsAllowed: number;
   damage: Damage[];
   shiftsThisLeg: number;
+  mustShift: boolean;
 }
 
 export interface RaceLeg {

@@ -14,6 +14,7 @@ export function createInitialPlayer(id: string, username: string): PlayerState {
     maxRollsAllowed: 7,
     damage: [],
     shiftsThisLeg: 0,
+    mustShift: false,
   };
 }
 
@@ -43,13 +44,13 @@ export function canShiftDown(player: PlayerState): boolean {
 export function shiftUp(player: PlayerState): PlayerState {
   if (!canShiftUp(player)) return player;
   const next = (player.currentGear.valueOf() + 1) as Gear;
-  return { ...player, currentGear: next, shiftsThisLeg: player.shiftsThisLeg + 1 };
+  return { ...player, currentGear: next, shiftsThisLeg: player.shiftsThisLeg + 1, mustShift: false };
 }
 
 export function shiftDown(player: PlayerState): PlayerState {
   if (!canShiftDown(player)) return player;
   const next = (player.currentGear.valueOf() - 1) as Gear;
-  return { ...player, currentGear: next, shiftsThisLeg: player.shiftsThisLeg + 1 };
+  return { ...player, currentGear: next, shiftsThisLeg: player.shiftsThisLeg + 1, mustShift: false };
 }
 
 export function determineWeatherRoll(weather: Weather, die: number, rng: () => number): { rolls: number[]; value: number } {
@@ -89,6 +90,7 @@ export function forcedGearFromFuel(player: PlayerState): Gear | null {
 
 export function performRoll(player: PlayerState, leg: RaceLeg, rng: () => number): { player: PlayerState; value: number; immediateOvershoot: boolean; requiresShiftAfter: boolean } {
   if (player.rollsRemaining <= 0 || player.isHeld || player.hasOvershot) return { player, value: 0, immediateOvershoot: false, requiresShiftAfter: false };
+  if (player.mustShift) return { player, value: 0, immediateOvershoot: false, requiresShiftAfter: true };
 
   const forced = forcedGearFromFuel(player);
   let gearToRoll = forced ?? player.currentGear;
@@ -113,6 +115,7 @@ export function performRoll(player: PlayerState, leg: RaceLeg, rng: () => number
 
   const immediateOvershoot = leg.weather === Weather.BLACK_ICE && gearToRoll === Gear.FIFTH && rolls[0] > 15;
   const requiresShiftAfter = leg.weather === Weather.SWELTERING && !forced;
+  updated.mustShift = requiresShiftAfter;
   return { player: updated, value, immediateOvershoot, requiresShiftAfter };
 }
 
