@@ -135,7 +135,7 @@ export default function App() {
     <div className="min-h-screen px-4 py-3">
       <header className="flex items-center justify-between">
         <h2 className="text-xl font-bold">RPM: Rally Premiere Marathon</h2>
-        <span className="stat">{ready ? 'Connected' : 'Initializing...'} {instanceId && `| ${instanceId}`}</span>
+        <span className="stat">{ready ? `You: ${me?.username ?? 'Player'}` : 'Initializing...'}</span>
       </header>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">

@@ -18,7 +18,8 @@ export async function initDiscordSdk(appId: string): Promise<DiscordSDK> {
 
 export async function authenticate(sdk: DiscordSDK): Promise<DiscordUser | null> {
   try {
-    const { user } = await (sdk as any).commands.authenticate({ access_token: null });
+    // Call without args; some builds reject explicit null
+    const { user } = await (sdk as any).commands.authenticate?.() ?? {};
     return {
       id: user.id,
       username: user.global_name || user.username || 'Player',
