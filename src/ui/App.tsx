@@ -45,6 +45,8 @@ export default function App() {
       setIsHost(amHost);
 
       const transport = await createDiscordInstanceTransport(sdk);
+      // expose for intents from non-host clients
+      (window as any).rpmTransport = transport;
       let seq = 0;
       const broadcast = () => {
         if (!amHost) return;

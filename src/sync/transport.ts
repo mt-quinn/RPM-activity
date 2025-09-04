@@ -13,7 +13,9 @@ export class NoopTransport implements SyncTransport {
 export async function createDiscordInstanceTransport(sdk: any): Promise<SyncTransport> {
   try {
     // Try to open a shared channel for this activity instance
-    await sdk.commands.openActivityInstanceChannel?.({ channel: 'rpm-sync' });
+    const openFn = sdk.commands.openActivityInstanceChannel || sdk.commands.openEmbeddedActivityInstanceChannel;
+    if (!openFn) throw new Error('instance channel open not supported');
+    await openFn({ channel: 'rpm-sync' });
     const listeners: Array<(d: unknown) => void> = [];
     const unsub = sdk.subscribe?.('ACTIVITY_INSTANCE_CHANNEL_MESSAGE_CREATE', (e: any) => {
       try {
@@ -26,7 +28,15 @@ export async function createDiscordInstanceTransport(sdk: any): Promise<SyncTran
       onMessage(cb) { listeners.push(cb); },
       send(data: unknown) {
         try {
-          sdk.commands.sendActivityInstanceActivity?.({ channel: 'rpm-sync', data: JSON.stringify(data) });
+          const payload = { channel: 'rpm-sync', data: JSON.stringify(data) };
+          const senders = [
+            sdk.commands.sendActivityInstanceMessage,
+            sdk.commands.sendActivityInstanceActivity,
+            sdk.commands.sendEmbeddedActivityInstanceMessage
+          ].filter(Boolean);
+          if (senders.length === 0) throw new Error('no instance message sender');
+          // Try first available sender
+          senders[0](payload);
         } catch {}
       },
       close() { try { unsub?.(); } catch {} }
