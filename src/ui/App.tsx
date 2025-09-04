@@ -27,19 +27,23 @@ export default function App() {
       const sdk = await initDiscordSdk('1413218482954440766');
       if (disposed) return;
       setReady(true);
+      // Identity and connected users
       const me = await authenticate(sdk);
       const myId = me?.id ?? 'me';
-      const myName = me?.username ?? 'Player';
+      const connected = await getConnectedUsers(sdk);
+      setParticipants(connected);
+      const myName = connected.find(u => u.id === myId)?.username || me?.username || 'Player';
       setMeId(myId);
       const c = new RaceController(myId, (() => {
         let s = 1234567;
         return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 100000) / 100000; };
       })());
+      // Seed participants we already see connected
       c.addParticipant(myId, myName);
+      connected.filter(u => u.id !== myId).forEach(u => c.addParticipant(u.id, u.username));
       setCtrl(c);
       setSnap(c.getSnapshot());
       // Host election: lowest user ID among instance users (fallback me)
-      const connected = await getConnectedUsers(sdk);
       const ids: string[] = [...connected.map((u: any) => u.id), myId].filter(Boolean).sort();
       const hostId = ids[0] ?? myId;
       const amHost = hostId === myId;
@@ -47,7 +51,9 @@ export default function App() {
 
       // Prefer Ably if key provided; fallback to instance transport
       const ablyKey = (window as any).ENV?.ABLY_KEY || (import.meta as any).env?.VITE_ABLY_KEY;
-      const { room: channelName } = await deriveRoomName(sdk);
+      const roomOverride = (import.meta as any).env?.VITE_ROOM;
+      const { room } = await deriveRoomName(sdk);
+      const channelName = roomOverride || room;
       const transport = ablyKey ? createAblyTransport(ablyKey, channelName) : await createDiscordInstanceTransport(sdk);
       // expose for intents from non-host clients
       (window as any).rpmTransport = transport;
