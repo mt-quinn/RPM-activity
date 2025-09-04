@@ -1,8 +1,8 @@
 import React from 'react';
 import { RaceSnapshot } from '../controller/raceController';
 
-export default function Checkpoint({ snap, onNext }:
-  { snap: RaceSnapshot; onNext: () => void; }) {
+export default function Checkpoint({ snap, onNext, onRepair, meId }:
+  { snap: RaceSnapshot; onNext: () => void; onRepair: () => void; meId: string; }) {
   const leg = snap.leg;
   return (
     <div>
@@ -15,7 +15,10 @@ export default function Checkpoint({ snap, onNext }:
           ))}
         </ul>
       </div>
-      <button onClick={onNext}>Skip Timer (host)</button>
+      <div style={{ marginTop: 8 }}>
+        <button onClick={onRepair}>Repair my car</button>
+        <button onClick={onNext} style={{ marginLeft: 8 }}>Skip Timer (host)</button>
+      </div>
     </div>
   );
 }

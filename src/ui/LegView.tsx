@@ -19,12 +19,17 @@ export default function LegView({ snap, meId, onRoll, onHold, onShift }:
         <button onClick={onHold} disabled={!me || me.isHeld || me.hasOvershot} style={{ marginLeft: 8 }}>Hold</button>
       </div>
       <div style={{ marginTop: 8 }}>
-        <strong>Players</strong>
-        <ul>
-          {Object.values(snap.players).map(p => (
-            <li key={p.id}>{p.username}: {p.totalDistance}/{leg.targetDistance} {p.isHeld ? '🟢' : p.hasOvershot ? '🔴' : '🟡'} Rolls {p.rollsRemaining}/{p.maxRollsAllowed} Gear {Gear[p.currentGear]}</li>
-          ))}
-        </ul>
+        <strong>Leaderboard (Live)</strong>
+        <ol>
+          {snap.scoreboard.map(s => {
+            const p = snap.players[s.id];
+            return (
+              <li key={s.id}>
+                {p?.username ?? s.id}: {s.points} pts — {p?.totalDistance ?? 0}/{leg.targetDistance} {p?.isHeld ? '🟢' : p?.hasOvershot ? '🔴' : '🟡'}
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </div>
   );

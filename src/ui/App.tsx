@@ -80,7 +80,12 @@ export default function App() {
             onShift={(d) => { if (!ctrl) return; ctrl.shift(meId, d); setSnap(ctrl.getSnapshot()); }}
           />
         ) : snapshot.phase === Phase.Checkpoint ? (
-          <Checkpoint snap={snapshot} onNext={() => { if (!ctrl) return; ctrl.tickOneSecond(); setSnap(ctrl.getSnapshot()); }} />
+          <Checkpoint
+            snap={snapshot}
+            meId={meId}
+            onRepair={() => { if (!ctrl) return; ctrl.repair(meId); setSnap(ctrl.getSnapshot()); }}
+            onNext={() => { if (!ctrl) return; ctrl.tickOneSecond(); setSnap(ctrl.getSnapshot()); }}
+          />
         ) : (
           <div>Game Over. Thanks for playing!</div>
         )
