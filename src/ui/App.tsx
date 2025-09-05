@@ -21,6 +21,7 @@ export default function App() {
   const [snap, setSnap] = useState(() => null as ReturnType<RaceController['getSnapshot']> | null);
   const [seed, setSeed] = useState<number>(() => Math.floor(Math.random() * 1e9));
   const [isHost, setIsHost] = useState(false);
+  const [roomName, setRoomName] = useState<string>('');
 
   useEffect(() => {
     let disposed = false;
@@ -56,6 +57,7 @@ export default function App() {
       const roomOverride = (import.meta as any).env?.VITE_ROOM;
       const { room } = await deriveRoomName(sdk);
       const channelName = roomOverride || room;
+      setRoomName(channelName);
       const transport = ablyKey ? createAblyTransport(ablyKey, channelName) : await createDiscordInstanceTransport(sdk);
       // expose for intents from non-host clients
       (window as any).rpmTransport = transport;
@@ -113,6 +115,19 @@ export default function App() {
         broadcast();
       });
 
+      // Name reconciliation loop: poll connected users briefly to capture display names
+      let reconTicks = 0;
+      const reconTimer = window.setInterval(async () => {
+        reconTicks += 1;
+        const latest = await getConnectedUsers(sdk);
+        latest.forEach(u => c.upsertParticipant(u.id, u.username));
+        const maybeMe = latest.find(u => u.id === myId);
+        if (maybeMe && (!selfUser || selfUser.username !== maybeMe.username)) setSelfUser(maybeMe);
+        setParticipants(latest);
+        setSnap(c.getSnapshot());
+        if (reconTicks >= 10) window.clearInterval(reconTimer);
+      }, 1000);
+
       // Host tick loop
       const t = window.setInterval(() => {
         if (amHost) {
@@ -125,7 +140,7 @@ export default function App() {
       // Announce join and also host emits current roster snapshot so clients can update names
       transport.send({ t: 'join', id: myId, name: myName } as Intent);
 
-      return () => { window.clearInterval(t); transport.close(); teardownPresence?.(); };
+      return () => { window.clearInterval(t); window.clearInterval(reconTimer); transport.close(); teardownPresence?.(); };
     })();
     return () => { disposed = true; };
   }, []);
@@ -146,7 +161,7 @@ export default function App() {
     <div className="min-h-screen px-4 py-3">
       <header className="flex items-center justify-between">
         <h2 className="text-xl font-bold">RPM: Rally Premiere Marathon</h2>
-        <span className="stat">{ready ? `You: ${selfUser?.username ?? 'Player'}` : 'Initializing...'}</span>
+        <span className="stat">{ready ? `You: ${selfUser?.username ?? 'Player'} | Room: ${roomName}` : 'Initializing...'}</span>
       </header>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
