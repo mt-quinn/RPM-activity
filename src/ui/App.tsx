@@ -9,6 +9,7 @@ import Checkpoint from './Checkpoint';
 import { createDiscordInstanceTransport } from '../sync/transport';
 import { createAblyTransport } from '../sync/ably';
 import type { Intent, SnapshotMsg } from '../sync/protocol';
+import { setupAblyPresence } from '../sync/ablyPresence';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -58,6 +59,15 @@ export default function App() {
       const transport = ablyKey ? createAblyTransport(ablyKey, channelName) : await createDiscordInstanceTransport(sdk);
       // expose for intents from non-host clients
       (window as any).rpmTransport = transport;
+
+      // Presence names via Ably (no OAuth needed)
+      let teardownPresence: (() => void) | null = null;
+      if (ablyKey) {
+        teardownPresence = setupAblyPresence(ablyKey, channelName, myId, myName, (id, name) => {
+          c.upsertParticipant(id, name);
+          setSnap(c.getSnapshot());
+        });
+      }
       let seq = 0;
       const broadcast = () => {
         if (!amHost) return;
@@ -115,7 +125,7 @@ export default function App() {
       // Announce join and also host emits current roster snapshot so clients can update names
       transport.send({ t: 'join', id: myId, name: myName } as Intent);
 
-      return () => { window.clearInterval(t); transport.close(); };
+      return () => { window.clearInterval(t); transport.close(); teardownPresence?.(); };
     })();
     return () => { disposed = true; };
   }, []);
