@@ -43,6 +43,20 @@ export class RaceController {
     }
   }
 
+  upsertParticipant(id: string, name: string) {
+    const meta = this.participants.get(id);
+    if (!meta) {
+      this.addParticipant(id, name);
+      return;
+    }
+    if (meta.name !== name) {
+      meta.name = name;
+      this.participants.set(id, meta);
+      const p = this.players.get(id);
+      if (p) this.players.set(id, { ...p, username: name });
+    }
+  }
+
   setReady(id: string, ready: boolean) {
     const p = this.participants.get(id);
     if (!p) return;

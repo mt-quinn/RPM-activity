@@ -41,7 +41,7 @@ export default function App() {
       })());
       // Seed participants we already see connected
       c.addParticipant(myId, myName);
-      connected.filter(u => u.id !== myId).forEach(u => c.addParticipant(u.id, u.username));
+      connected.forEach(u => c.upsertParticipant(u.id, u.username));
       setCtrl(c);
       setSnap(c.getSnapshot());
       // Host election: lowest user ID among instance users (fallback me)
@@ -78,7 +78,7 @@ export default function App() {
         const intent = m as Intent;
         switch (intent.t) {
           case 'join':
-            c.addParticipant(intent.id, intent.name);
+            c.upsertParticipant(intent.id, intent.name);
             break;
           case 'ready':
             c.setReady(intent.id, intent.ready);
@@ -112,7 +112,7 @@ export default function App() {
         }
       }, 1000);
 
-      // Announce join
+      // Announce join and also host emits current roster snapshot so clients can update names
       transport.send({ t: 'join', id: myId, name: myName } as Intent);
 
       return () => { window.clearInterval(t); transport.close(); };
